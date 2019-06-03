@@ -1,37 +1,42 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <limits.h>
 
 using namespace std;
 
 vector<double> values;
 double money = 500.0;
 double ripples = 0.0;
-double buyPrice = 0.0, sellPrice = 0.0;
+double buyPrice = INT_MAX, sellPrice = INT_MAX;
 int currentIndex = 0, buyCount = 0, sellCount = 0;
 
 
-void buy()
+void buy(double fraction)
 {
     if (money)
     {
-        ripples += money / values[currentIndex];
-        money = 0;
+        double minusAmount = fraction * money;
+        ripples += minusAmount / values[currentIndex];
+        money -= minusAmount;
         buyCount++;
+        cout << "Buy " << sellPrice << " " << values[currentIndex] << " money left " << money << endl;
         buyPrice = values[currentIndex];
         sellPrice = 0;
     }
 }
 
-void sell()
+void sell(double fraction)
 {
     if (ripples)
     {
-        money += ripples * values[currentIndex];
-        ripples = 0;
+        double minusAmount = ripples * fraction;
+        money += minusAmount * values[currentIndex];
+        ripples -= minusAmount;
         sellCount++;
+        cout << "Sell " << buyPrice << " " << values[currentIndex] << " ripples left " << ripples << endl;
         sellPrice = values[currentIndex];
-        buyPrice = 0;
+        buyPrice = INT_MAX;
     }
 }
 
@@ -49,8 +54,8 @@ void readFromFile(string fileName)
     double num = 0.0, temp = 0.0;
     //keep storing values from the text file so long as data exists:
     while (ifile >> num) {
-        values.insert(values.begin(), num);
-        //values.push_back(num);
+        // values.insert(values.begin(), num);
+        values.push_back(num);
         ifile >> temp;
         ifile >> temp;
         ifile >> temp;
@@ -62,40 +67,80 @@ void readFromFile(string fileName)
     }
 }
 
+auto simple = [&] (vector<double> &input, int current) -> double
+{
+    if (input.size() < 2 || input.size() < current - 1)
+    return 0;
+
+    if (current == 0)
+    {
+        // buy();
+        return 1;
+    }
+
+    if (input[current] < input[current - 1])
+    {
+        // buy();
+        return 1;
+    }
+    if (input[current] > input[current - 1])
+    {
+        // sell();
+        return -1;
+    }
+    return 0;
+};
+
+auto simpleBuySell = [&] (const vector<double> &input, const int current) -> double
+{
+    if (input.size() < 2 || input.size() < current - 1)
+    return 0;
+
+
+    if (input[current] > buyPrice)
+    {
+        // sell();
+        // cout << "Buy and current " << buyPrice << " " << input[current] << endl;
+        return -1;
+    }
+
+    if (input[current] < sellPrice)
+    {
+        // buy();
+        return 1;
+    }
+
+    return 0;
+};
+
 int main()
 {
 
     readFromFile("data.txt");
 
     currentIndex = 0;
-    buy();
-    currentIndex = 1;
     while (currentIndex < values.size())
     {
-        /*if (values[currentIndex] < values[currentIndex - 1])
+        double fraction = simpleBuySell(values, currentIndex);
+        // cout << "Answer " << fraction << endl;
+        if (fraction > 0)
         {
-            buy();
+            buy(fraction);
         }
-        if (values[currentIndex] > values[currentIndex - 1])
+        if (fraction < 0)
         {
-            sell();
-        }*/
+            sell(fraction*(-1));
+        }
 
-        if (values[currentIndex] > buyPrice)
-        {
-            sell();
-        }
-        if (values[currentIndex] < sellPrice)
-        {
-            buy();
-        }
+
         currentIndex++;
     }
     currentIndex--;
-    sell();
+    sell(1);
+    // cout << "Selling at " << values[currentIndex] << endl;
 
     cout << "USD " << money << " and ripples " << ripples << endl;
     cout << "Buy count " << buyCount << " sell count " << sellCount << endl;
-    system("PAUSE");
+    // system("PAUSE");
     return 0;
 }
