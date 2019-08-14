@@ -40,10 +40,11 @@ void sell(double fraction)
     }
 }
 
-void readFromFile(string fileName)
+void readFromFile(string fileName, int firstCount)
 {
     ifstream ifile(fileName, ios::in);
     vector<double> scores;
+    int i = 0;
 
     //check to see that the file was opened correctly:
     if (!ifile.is_open()) {
@@ -51,14 +52,12 @@ void readFromFile(string fileName)
         exit(1);//exit or do additional error checking
     }
 
-    double num = 0.0, temp = 0.0;
+    double num = 0.0;
     //keep storing values from the text file so long as data exists:
-    while (ifile >> num) {
+    while (ifile >> num && i < firstCount) {
         values.insert(values.begin(), num);
         // values.push_back(num);
-        ifile >> temp;
-        ifile >> temp;
-        ifile >> temp;
+        i++;
     }
 
     //verify that the scores were stored correctly:
@@ -144,7 +143,7 @@ auto movingAverage = [&] (const vector<double> &input, const int current, const 
 int main()
 {
 
-    readFromFile("data.txt");
+    readFromFile("data.txt", 250);
 
     for (int i = 0; i < 50; i++)
     {
@@ -164,12 +163,14 @@ int main()
                 sell(fraction*(-1));
             }
 
-
+            if (currentIndex == values.size() - 1) sell(1);
             currentIndex++;
+            // cout << "Size at \t" << currentIndex << " M " << money << endl;
         }
-        currentIndex--;
-        sell(1);
-        cout << "Size\t" << i << " USD " << money << endl;
+        // currentIndex--;
+        // sell(1);
+        // cout << "Size\t" << i << " M " << money << endl;
+        cout << money << endl;
         // cout << "Selling at " << values[currentIndex] << endl;
     }
 

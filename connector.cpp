@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <curl/curl.h>
+#include <QString>
 
 using namespace std;
 
