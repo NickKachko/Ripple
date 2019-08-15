@@ -18,6 +18,13 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Cmake gen files
+CMakeCache.txt
+CMakeFiles/*
+Makefile
+cmake_install.cmake
+connector
+
 # =========================
 # Operating System Files
 # =========================
