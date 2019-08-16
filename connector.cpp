@@ -3,22 +3,24 @@
 #include <iostream>
 #include <curl/curl.h>
 
-#include <QJsonObject>
-#include <QJsonDocument>
+#include <signal.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+
 #include <QString>
 #include <QStringList>
 #include <QThread>
 
+#include "MarketAccessProvider.h"
+
 using namespace std;
 
-char memory[5000];
-std::string content;
+bool isAllowedToRun = true;
 
-// vector<double> values;
 double money = 500.0;
 double ripples = 0.0;
 double buyPrice = INT_MAX, sellPrice = INT_MAX;
-int buyCount = 0, sellCount = 0;
 
 
 double currentPrice = 0, previousPrice = 0;
@@ -30,7 +32,6 @@ void buy(double fraction)
         double minusAmount = fraction * money;
         ripples += minusAmount / currentPrice;
         money -= minusAmount;
-        buyCount++;
         cout << "Buy " << sellPrice << " " << currentPrice << " current ripples " << ripples << endl;
         buyPrice = currentPrice;
         sellPrice = 0;
@@ -44,7 +45,6 @@ void sell(double fraction)
         double minusAmount = ripples * fraction;
         money += minusAmount * currentPrice;
         ripples -= minusAmount;
-        sellCount++;
         cout << "Sell " << buyPrice << " " << currentPrice << " current money " << money << endl;
         sellPrice = currentPrice;
         buyPrice = INT_MAX;
@@ -79,108 +79,45 @@ auto movingAverage = [&] (const vector<double> &input, const int current, const 
 
         return 0;
     };
+void my_handler(int s){
+    printf("Caught signal %d\n",s);
+    isAllowedToRun = false;
 
+}
 
-
-class Connector
+int main(int argc, char** argv)
 {
-public:
-    Connector()
+    if (argc != 2)
     {
-        mCurl = curl_easy_init();
-        curl_easy_setopt(mCurl, CURLOPT_URL, "https://cex.io/api/last_price/XRP/USD");
-        curl_easy_setopt(mCurl, CURLOPT_WRITEFUNCTION, WriteCB);
-        curl_easy_setopt(mCurl, CURLOPT_WRITEDATA, this);
+        cout << "Error, number of arguments should be 1!" << endl;
+        return 1;
     }
 
-    ~Connector()
+
+    MarketAccessProvider provider(argv[1]);
+
+    struct sigaction sigIntHandler;
+    sigIntHandler.sa_handler = my_handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, NULL);
+
+    previousPrice = provider.values.back();
+
+    while(isAllowedToRun)
     {
-        curl_easy_cleanup(mCurl);
-    }
+        currentPrice = provider.getCurrentPrice();
 
-    void performRequest()
-    {
-        CURLcode res;
-        mContent = "";
-        res = curl_easy_perform(mCurl);
-        // cout << content << endl;
-
-        if (res != CURLE_OK)
-        {
-            cout << "ERROR with curl " << curl_easy_strerror(res) << endl;
-        }
-        // else
-        // {
-        //     cout << "SUCCESS " << res << endl;
-        // }
-    }
-
-    static int WriteCB(void *contents, size_t size, size_t nmemb, void *p)
-    {
-        // cout << "Have " << size << " " << nmemb << " and " << p << endl;
-        // cout << (char*)contents << endl;
-
-        static_cast<Connector*>(p)->appendData(std::string((char*)contents, nmemb));
-
-        return nmemb;
-    }
-
-    std::string getData()
-    {
-        return mContent;
-    }
-
-    void appendData(std::string dataToAdd)
-    {
-        mContent += dataToAdd;
-    }
-
-private:
-    CURL *mCurl;
-    std::string mContent;
-};
-
-
-int main()
-{
-    QJsonObject jsonObject;
-    Connector connector;
-    vector<double> values = {0.2528 , 0.2527 , 0.2525 , 0.253 , 0.2531 , 0.2534 , 0.2539 , 0.254 , 0.2541 , 0.2536 , 0.2534 , 0.2535 , 0.2532 , 0.2543 , 0.2555 , 0.255 , 0.2516 , 0.2525 , 0.2529 , 0.253 , 0.2531 , 0.253 , 0.2542 , 0.2548 , 0.255 , 0.254};
-
-    // connector.performRequest();
-
-    // jsonObject  = QJsonDocument::fromJson(QString::fromStdString(connector.getData()).toUtf8()).object();
-
-    // cout << jsonObject.keys().join(" ").toStdString() << endl;
-    // cout << jsonObject.value("lprice").toString().toStdString() << endl;
-    // cout << jsonObject.value("lprice").toString().toDouble() << endl;
-
-
-
-
-    // cout << "Nikita, done " << connector.getData() << endl;
-
-    // QThread::sleep(20);
-    // connector.performRequest();
-    // cout << "Nikita, done " << connector.getData() << endl;
-
-
-
-
-    while(true)
-    {
-        connector.performRequest();
-        jsonObject  = QJsonDocument::fromJson(QString::fromStdString(connector.getData()).toUtf8()).object();
-        currentPrice = jsonObject.value("lprice").toString().toDouble();
+        if (!currentPrice) continue;
 
         if (currentPrice != previousPrice)
         {
             cout << "Price changed to " << currentPrice << endl;
             previousPrice = currentPrice;
 
-            values.push_back(currentPrice);
+            provider.values.push_back(currentPrice);
 
-            double fraction = movingAverage(values, values.size() - 1, 16);
+            double fraction = movingAverage(provider.values, provider.values.size() - 1, 50);
 
             if (fraction > 0)
             {
@@ -194,13 +131,6 @@ int main()
 
         QThread::sleep(2);
     }
-
-
-
-
-
-
-
 
     return 0;
 }

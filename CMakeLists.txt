@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.1.0)
 
-project(connector)
+project(trader)
 
 set (CMAKE_PREFIX_PATH "/home/mkachko/Qt/5.13.0/gcc_64")
 
@@ -10,8 +10,10 @@ endif()
 
 find_package(Qt5 COMPONENTS Core REQUIRED)
 
-add_executable(connector
+add_executable(trader
     connector.cpp
+    MarketAccessProvider.cpp
+    MarketAccessProvider.h
 )
 
-target_link_libraries(connector curl Qt5::Core)
+target_link_libraries(trader curl Qt5::Core)
