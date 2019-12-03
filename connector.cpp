@@ -117,7 +117,7 @@ int main(int argc, char** argv)
 
             provider.values.push_back(currentPrice);
 
-            double fraction = movingAverage(provider.values, provider.values.size() - 1, 50);
+            double fraction = movingAverage(provider.values, provider.values.size() - 1, 150);
 
             if (fraction > 0)
             {
