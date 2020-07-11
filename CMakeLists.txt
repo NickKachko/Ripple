@@ -13,6 +13,8 @@ find_package(Qt5 COMPONENTS Core REQUIRED)
 
 add_executable(trader
     connector.cpp
+    CurrencyController.h
+    CurrencyController.cpp
     DecisionMaker.h
     DecisionMaker.cpp
     MarketProvider/MarketAccessProvider.cpp

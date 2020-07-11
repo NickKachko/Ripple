@@ -6,7 +6,6 @@
 #include <memory>
 #include <signal.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <vector>
 #include <unistd.h>
 
@@ -14,6 +13,7 @@
 #include <QStringList>
 #include <QThread>
 
+#include "CurrencyController.h"
 #include "DecisionMaker.h"
 #include "MarketProvider/IAccessProvider.h"
 #include "MarketProvider/MarketAccessProvider.h"
@@ -23,43 +23,12 @@ using namespace std;
 
 bool isAllowedToRun = true;
 
-double money = 500.0;
-double ripples = 0.0;
-double buyPrice = INT_MAX, sellPrice = INT_MAX;
-
 
 double currentPrice = 0, previousPrice = 0;
-
-void buy(double fraction)
-{
-    if (money)
-    {
-        double minusAmount = fraction * money;
-        ripples += minusAmount / currentPrice;
-        money -= minusAmount;
-        cout << "Buy " << sellPrice << " " << currentPrice << " current ripples " << ripples << endl;
-        buyPrice = currentPrice;
-        sellPrice = 0;
-    }
-}
-
-void sell(double fraction)
-{
-    if (ripples)
-    {
-        double minusAmount = ripples * fraction;
-        money += minusAmount * currentPrice;
-        ripples -= minusAmount;
-        cout << "Sell " << buyPrice << " " << currentPrice << " current money " << money << endl;
-        sellPrice = currentPrice;
-        buyPrice = INT_MAX;
-    }
-}
 
 void my_handler(int s){
     printf("Caught signal %d\n",s);
     isAllowedToRun = false;
-
 }
 
 int main(int argc, char** argv)
@@ -70,9 +39,9 @@ int main(int argc, char** argv)
         return 1;
     }
 
-
     unique_ptr<IAccessProvider> provider = make_unique<FileMarketProvider>(argv[1]);
     DecisionMaker decisionMaker;
+    CurrencyController currencyController(&currentPrice);
 
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = my_handler;
@@ -99,15 +68,15 @@ int main(int argc, char** argv)
 
             if (fraction > 0)
             {
-                buy(fraction);
+                currencyController.buy(fraction);
             }
             if (fraction < 0)
             {
-                sell(fraction*(-1));
+                currencyController.sell(fraction*(-1));
             }
         }
 
-        QThread::sleep(0.1);
+        QThread::sleep(0.5);
     }
 
     return 0;

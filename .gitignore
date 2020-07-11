@@ -24,6 +24,7 @@ CMakeFiles/*
 Makefile
 cmake_install.cmake
 connector
+trader
 
 # =========================
 # Operating System Files
