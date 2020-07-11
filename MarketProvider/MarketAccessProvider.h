@@ -10,21 +10,17 @@
 #include <curl/curl.h>
 #include <vector>
 
-class MarketAccessProvider
+#include "IAccessProvider.h"
+
+class MarketAccessProvider : public IAccessProvider
 {
     friend int writeCallback(void *contents, size_t size, size_t nmemb, void *p);
 public:
     MarketAccessProvider(std::string curr);
-    ~MarketAccessProvider();
-    double getCurrentPrice();
+    virtual ~MarketAccessProvider();
+    double getCurrentPrice() override;
 
-    std::vector<double> values;
 private:
-    void saveData();
-    void retrieveData();
-
     CURL *mCurl;
     std::string mContent;
-    const std::string currency;
-    const std::string fileName;
 };

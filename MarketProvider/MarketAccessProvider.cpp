@@ -26,7 +26,7 @@ int writeCallback(void *contents, size_t size, size_t nmemb, void *p)
     return nmemb;
 }
 
-MarketAccessProvider::MarketAccessProvider(std::string curr) : currency(curr), fileName(currency + "_" + VALUES_FILE_NAME)
+MarketAccessProvider::MarketAccessProvider(std::string curr) : IAccessProvider(curr)
 {
     QString url = QString::fromStdString("https://cex.io/api/last_price/" + currency + "/USD");
     cout << "Creating MarketAccessProvider " << url.toStdString() << endl;
@@ -66,42 +66,10 @@ double MarketAccessProvider::getCurrentPrice()
     jsonObject  = QJsonDocument::fromJson(QString::fromStdString(mContent).toUtf8()).object();
     currentPrice = jsonObject.value("lprice").toString().toDouble();
 
+    if (values.size() && currentPrice != values.back())
+    {
+        values.push_back(currentPrice);
+    }
+
     return currentPrice;
-}
-
-void MarketAccessProvider::saveData()
-{
-    QJsonArray valuesArray;
-    std::copy(values.begin(), values.end(), std::back_inserter(valuesArray));
-
-    QFile file(QString::fromStdString(fileName));
-    file.open(QFile::WriteOnly);
-    file.write(QJsonDocument(valuesArray).toJson());
-    file.close();
-
-    cout << "Successfully stored " << valuesArray.size() << " items" << endl;
-}
-
-void MarketAccessProvider::retrieveData()
-{
-    QFile file(QString::fromStdString(fileName));
-
-    if (!file.exists())
-    {
-        cout << "No file " << fileName << " exists!" << endl;
-        return;
-    }
-
-    file.open(QFile::ReadOnly);
-
-    QString raw = file.readAll();
-    QJsonArray array = QJsonDocument::fromJson(raw.toUtf8()).array();
-
-    for (int i = 0; i < array.size(); i++)
-    {
-        values.push_back(array[i].toDouble());
-    }
-
-    file.close();
-    cout << "Successfully read " << values.size() << " items" << endl;
 }

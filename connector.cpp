@@ -3,16 +3,21 @@
 #include <iostream>
 #include <curl/curl.h>
 
+#include <memory>
 #include <signal.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <vector>
 #include <unistd.h>
 
 #include <QString>
 #include <QStringList>
 #include <QThread>
 
-#include "MarketAccessProvider.h"
+#include "DecisionMaker.h"
+#include "MarketProvider/IAccessProvider.h"
+#include "MarketProvider/MarketAccessProvider.h"
+#include "MarketProvider/FileMarketProvider.h"
 
 using namespace std;
 
@@ -51,34 +56,6 @@ void sell(double fraction)
     }
 }
 
-
-auto movingAverage = [&] (const vector<double> &input, const int current, const int avgSpan) -> double
-    {
-        // static const int avgSpan = 10;
-        double average = 0.0;
-        if (input.size() < 2 || input.size() < current - 1 || current < avgSpan)
-        return 0;
-
-        for (int i = current - avgSpan; i < current; i++)
-        {
-            average += input[i];
-        }
-        average /= avgSpan;
-
-        if (input[current] > average)
-        {
-            // cout << "Average is less, buying " << average << " " << input[current] << endl;
-            return 1;
-        }
-
-        if (input[current] < average)
-        {
-            // cout << "Average is more, selling " << average << " " << input[current] << endl;
-            return -1;
-        }
-
-        return 0;
-    };
 void my_handler(int s){
     printf("Caught signal %d\n",s);
     isAllowedToRun = false;
@@ -94,7 +71,8 @@ int main(int argc, char** argv)
     }
 
 
-    MarketAccessProvider provider(argv[1]);
+    unique_ptr<IAccessProvider> provider = make_unique<FileMarketProvider>(argv[1]);
+    DecisionMaker decisionMaker;
 
     struct sigaction sigIntHandler;
     sigIntHandler.sa_handler = my_handler;
@@ -102,22 +80,22 @@ int main(int argc, char** argv)
     sigIntHandler.sa_flags = 0;
     sigaction(SIGINT, &sigIntHandler, NULL);
 
-    previousPrice = provider.values.back();
+    previousPrice = provider->getCurrentPrice();
 
     while(isAllowedToRun)
     {
-        currentPrice = provider.getCurrentPrice();
+        currentPrice = provider->getCurrentPrice();
 
         if (!currentPrice) continue;
+
+        if (currentPrice < 0) break;
 
         if (currentPrice != previousPrice)
         {
             cout << "Price changed to " << currentPrice << endl;
             previousPrice = currentPrice;
 
-            provider.values.push_back(currentPrice);
-
-            double fraction = movingAverage(provider.values, provider.values.size() - 1, 150);
+            double fraction = decisionMaker.supplyNewValue(currentPrice);
 
             if (fraction > 0)
             {
@@ -129,7 +107,7 @@ int main(int argc, char** argv)
             }
         }
 
-        QThread::sleep(2);
+        QThread::sleep(0.1);
     }
 
     return 0;
